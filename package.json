@@ -1,0 +1,16 @@
+{
+  "name": "payfi-paystream",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "deploy:contracts": "turbo run deploy --filter=contracts",
+    "export-abis": "turbo run export-abis --filter=contracts"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.0",
+    "typescript": "^5.4.0"
+  }
+}

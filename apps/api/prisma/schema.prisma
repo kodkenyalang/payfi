@@ -1,0 +1,51 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum JobStatus {
+  FUNDED
+  SUBMITTED
+  EVALUATING
+  COMPLETE
+  DISPUTED
+  REFUNDED
+}
+
+enum EvalStatus {
+  PENDING
+  COMPLETE
+  FAILED
+}
+
+model Job {
+  id                String      @id @default(cuid())
+  jobId             BigInt      @unique
+  clientAddress     String
+  freelancerAddress String
+  amountWei         String
+  deliverableUrl    String
+  requirements      String
+  deadlineAt        DateTime
+  status            JobStatus   @default(FUNDED)
+  transactionHash   String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  evaluations       Evaluation[]
+}
+
+model Evaluation {
+  id          String     @id @default(cuid())
+  jobId       String
+  job         Job        @relation(fields: [jobId], references: [id])
+  score       Int?
+  reason      String?
+  requestId   String?
+  status      EvalStatus @default(PENDING)
+  triggeredAt DateTime   @default(now())
+  completedAt DateTime?
+}

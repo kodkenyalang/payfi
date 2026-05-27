@@ -1,0 +1,11 @@
+{
+  "somnia_devnet": {
+    "chainId": "50311",
+    "escrow": "",
+    "oracle": "",
+    "evaluator": "",
+    "nft": "",
+    "deployBlock": 0,
+    "deployedAt": ""
+  }
+}

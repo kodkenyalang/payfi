@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: payfi-paystream-api
+    env: node
+    rootDir: apps/api
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: payfi-paystream-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: payfi-paystream-redis
+          property: connectionString
+      - key: SOMNIA_RPC_URL
+        sync: false
+      - key: DEPLOYER_PRIVATE_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: ESCROW_ADDRESS
+        sync: false
+      - key: ORACLE_ADDRESS
+        sync: false
+      - key: EVALUATOR_ADDRESS
+        sync: false
+      - key: NFT_ADDRESS
+        sync: false
+
+databases:
+  - name: payfi-paystream-db
+    plan: starter
+    postgresMajorVersion: 16
+
+redis:
+  - name: payfi-paystream-redis
+    plan: starter

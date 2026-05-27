@@ -1,0 +1,25 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "typechain/**"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "export-abis": {
+      "dependsOn": ["build"],
+      "outputs": ["../../packages/types/abis/**"]
+    },
+    "deploy": {
+      "dependsOn": ["build"],
+      "outputs": ["../../packages/types/deployments.json"]
+    }
+  }
+}
