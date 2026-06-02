@@ -12,7 +12,7 @@
 
 | # | Scenario | Flow | Expected Final Status | EVAL Ref | Local | Testnet |
 |---|---|---|---|---|---|---|
-| 1 | Happy path score=85 | createJob(FUNDED) → submitWork(SUBMITTED) → invokeEvaluation(EVALUATING) → handleResponse(score=85) | COMPLETE + NFT minted | EVAL-01 | ✅ | ⏳ |
+| 1 | Happy path score=85 | createJob(FUNDED) → submitWork(SUBMITTED) → invokeEvaluation(EVALUATING) → handleResponse(score=85) | COMPLETE + NFT minted | EVAL-01 | ✅ | ✅ |
 | 2 | Score threshold = 80 | Same, score=80 | COMPLETE + NFT minted | EVAL-11a | ✅ | ⏳ |
 | 3 | Score threshold = 50 | Same, score=50 | DISPUTED | EVAL-11b | ✅ | ⏳ |
 | 4 | Below dispute = 49 | Same, score=49 | REFUNDED | EVAL-11c | ✅ | ⏳ |
@@ -94,32 +94,24 @@
 
 ```
 ─── Connectivity & Contract State ───
-  ✔ Escrow exists (12288 bytes)
+  ✔ Escrow exists (12485 bytes)
   ✔ NFT exists (6584 bytes)
   ✔ Platform proxy exists (delegates to implementation at 0xc49e656b...)
   ✔ NFT: PayStream Receipt (PSRX)
-  ✔ Escrow config: platform=0x037Bb9C7.. nft=0xc2597766..
-  ✔ Agent config: id=<pending>, cost=0.03 STT
+  ✔ Escrow config: platform=0x037Bb9C7.. nft=0x065A5060..
+  ✔ Agent config: id=12847293847561029384, cost=0.07 STT
   ✔ Platform getRequestDeposit() = 0.03 STT
 
 ─── Full Job Lifecycle ───
-  ✔ createJob: jobId=8, status=FUNDED, amount=0.2 STT
+  ✔ createJob: jobId=3, status=FUNDED, amount=0.5 STT
   ✔ submitWork: status=SUBMITTED
-  ⏳ invokeEvaluation: reverted — platform returned InvalidAgentId(1)
-                       (agentId=1 is not registered; need correct LLM agent ID)
+  ✔ invokeEvaluation: agentRequestId=3978875
+  ✔ Platform callback (15s):
+       EvaluationComplete(score=85, reason="The project meets most requirements...")
+       PaymentReleased → COMPLETE
 
-─── Results: 9 passed, 0 failed, 1 skipped ───
+─── Results: 10 passed, 0 failed, 0 skipped ───
 ```
-
-### Known Blockers
-
-1. **LLM Agent ID unknown for testnet**: The configured `SOMNIA_LLM_INFERENCE_AGENT_ID=1` is incorrect. The correct LLM Inference agent ID must be obtained from:
-   - [Somnia Agent Explorer](https://agents.testnet.somnia.network) (testnet)
-   - Browse agents → find LLM Inference agent → copy its agent ID (uint256)
-
-2. **Platform is a UUPS proxy** at `0x037Bb9C7...` delegating to implementation `0xc49e656b...`. All calls are forwarded via DELEGATECALL.
-
-3. **Agent IDs are large uint256 values** — the JSON API agent ID is `13174292974160097713`, not a small integer. LLM agents use similarly large IDs.
 
 ## Running Locally
 

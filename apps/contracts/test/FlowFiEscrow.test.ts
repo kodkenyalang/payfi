@@ -18,7 +18,7 @@ describe("EVAL-01: Happy Path — Full job lifecycle", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
 
     await nft.setMinter(await escrow.getAddress());
@@ -111,7 +111,7 @@ describe("EVAL-01: Happy Path — Full job lifecycle", () => {
     const balanceBefore = await ethers.provider.getBalance(d.freelancer.address);
     await d.escrow.invokeEvaluation(0);
     const balanceAfter = await ethers.provider.getBalance(d.freelancer.address);
-    const deposit = ethers.parseEther("0.001") + ethers.parseEther("0.03") * 3n;
+    const deposit = ethers.parseEther("0.03") + ethers.parseEther("0.07") * 3n;
     expect(balanceAfter - balanceBefore).to.equal(d.amount - deposit);
   });
 
@@ -153,7 +153,7 @@ describe("EVAL-02: Disputed Path", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
 
@@ -179,7 +179,7 @@ describe("EVAL-02: Disputed Path", () => {
     const d = await disputedSetup(65);
     const job = await d.escrow.jobs(0);
     expect(job.status).to.equal(4);
-    const deposit = ethers.parseEther("0.001") + ethers.parseEther("0.03") * 3n;
+    const deposit = ethers.parseEther("0.03") + ethers.parseEther("0.07") * 3n;
     expect(job.amount).to.equal(d.amount - deposit);
   });
 
@@ -188,7 +188,7 @@ describe("EVAL-02: Disputed Path", () => {
     const balanceBefore = await ethers.provider.getBalance(d.freelancer.address);
     await d.escrow.connect(d.client).clientOverride(0, true);
     const balanceAfter = await ethers.provider.getBalance(d.freelancer.address);
-    const deposit = ethers.parseEther("0.001") + ethers.parseEther("0.03") * 3n;
+    const deposit = ethers.parseEther("0.03") + ethers.parseEther("0.07") * 3n;
     expect(balanceAfter - balanceBefore).to.equal(d.amount - deposit);
     const job = await d.escrow.jobs(0);
     expect(job.status).to.equal(3);
@@ -229,7 +229,7 @@ describe("EVAL-03: Refund Paths", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
 
@@ -271,7 +271,7 @@ describe("EVAL-03: Refund Paths", () => {
     await d.escrow.invokeEvaluation(0);
     const job = await d.escrow.jobs(0);
     expect(job.status).to.equal(4);
-    const deposit = ethers.parseEther("0.001") + ethers.parseEther("0.03") * 3n;
+    const deposit = ethers.parseEther("0.03") + ethers.parseEther("0.07") * 3n;
     expect(job.evaluationReason).to.equal("agent_failed");
     expect(job.amount).to.equal(d.amount - deposit);
   });
@@ -324,7 +324,7 @@ describe("EVAL-04: Access Control", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
 
@@ -437,7 +437,7 @@ describe("EVAL-05: Reentrancy Protection", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
     await malicious.setEscrow(await escrow.getAddress());
@@ -478,7 +478,7 @@ describe("EVAL-06: Agent Deposit Accounting", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
     return { escrow, nft, platform, owner, client, freelancer };
@@ -500,7 +500,7 @@ describe("EVAL-06: Agent Deposit Accounting", () => {
     );
     await d.platform.setMockResult(2, result);
 
-    const platformDeposit = ethers.parseEther("0.001") + ethers.parseEther("0.03") * 3n;
+    const platformDeposit = ethers.parseEther("0.03") + ethers.parseEther("0.07") * 3n;
 
     const platformBefore = await ethers.provider.getBalance(await d.platform.getAddress());
 
@@ -525,12 +525,12 @@ describe("EVAL-07: _parseScore", () => {
       await platform.getAddress(),
       await nft.getAddress(),
       1n,
-      ethers.parseEther("0.03")
+      ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
 
     const deadline = (await time.latest()) + 86400;
-    await escrow.connect(client).createJob(freelancer.address, "req", "https://github.com/test", deadline, { value: ethers.parseEther("0.1") });
+    await escrow.connect(client).createJob(freelancer.address, "req", "https://github.com/test", deadline, { value: ethers.parseEther("0.3") });
     await escrow.connect(freelancer).submitWork(0, "https://github.com/test/2");
 
     const result = ethers.AbiCoder.defaultAbiCoder().encode(["string"], [jsonStr]);
@@ -617,7 +617,7 @@ describe("EVAL-09: Pause / Unpause", () => {
     const platform = await MockAgentRequester.deploy();
     const FlowFiEscrow = await ethers.getContractFactory("FlowFiEscrow");
     const escrow = await FlowFiEscrow.deploy(
-      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.03")
+      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.07")
     );
     const deadline = (await time.latest()) + 7 * 24 * 3600;
     return { escrow, owner, client, freelancer, deadline };
@@ -656,7 +656,7 @@ describe("EVAL-10: handleResponse with empty result bytes refunds", () => {
     const platform = await MockAgentRequester.deploy();
     const FlowFiEscrow = await ethers.getContractFactory("FlowFiEscrow");
     const escrow = await FlowFiEscrow.deploy(
-      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.03")
+      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
     const deadline = (await time.latest()) + 7 * 24 * 3600;
@@ -699,7 +699,7 @@ describe("EVAL-11: Score boundary thresholds", () => {
     const platform = await MockAgentRequester.deploy();
     const FlowFiEscrow = await ethers.getContractFactory("FlowFiEscrow");
     const escrow = await FlowFiEscrow.deploy(
-      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.03")
+      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
     const deadline = (await time.latest()) + 7 * 24 * 3600;
@@ -752,7 +752,7 @@ describe("EVAL-12: invokeEvaluation WrongStatus from every non-SUBMITTED state",
     const platform = await MockAgentRequester.deploy();
     const FlowFiEscrow = await ethers.getContractFactory("FlowFiEscrow");
     const escrow = await FlowFiEscrow.deploy(
-      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.03")
+      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.07")
     );
     await nft.setMinter(await escrow.getAddress());
     const deadline = (await time.latest()) + 7 * 24 * 3600;
@@ -812,7 +812,7 @@ describe("EVAL-13: Domain allowlist edge cases", () => {
     const platform = await MockAgentRequester.deploy();
     const FlowFiEscrow = await ethers.getContractFactory("FlowFiEscrow");
     const escrow = await FlowFiEscrow.deploy(
-      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.03")
+      await platform.getAddress(), await nft.getAddress(), 1n, ethers.parseEther("0.07")
     );
     const deadline = (await time.latest()) + 7 * 24 * 3600;
     return { escrow, owner, client, freelancer, deadline };

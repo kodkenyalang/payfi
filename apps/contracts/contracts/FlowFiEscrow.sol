@@ -11,6 +11,10 @@ interface IFlowNFT {
         external returns (uint256 tokenId);
 }
 
+interface IAgent {
+    function inferString(string memory prompt, string memory system, bool chainOfThought, string[] memory allowedValues) external returns (string memory);
+}
+
 contract FlowFiEscrow is ReentrancyGuard, Pausable, Ownable {
 
     enum JobStatus {
@@ -159,7 +163,10 @@ contract FlowFiEscrow is ReentrancyGuard, Pausable, Ownable {
         j.amount -= totalDeposit;
 
         string memory prompt = _buildEvalPrompt(j.requirements, j.deliverableUrl);
-        bytes memory payload = abi.encode(prompt);
+        string[] memory emptyAllowed;
+        bytes memory payload = abi.encodeWithSelector(
+            IAgent.inferString.selector, prompt, "", false, emptyAllowed
+        );
 
         uint256 agentRequestId = platform.createRequest{value: totalDeposit}(
             llmAgentId,

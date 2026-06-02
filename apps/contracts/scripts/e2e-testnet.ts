@@ -114,7 +114,7 @@ async function main() {
   const nextId = await escrow.nextJobId();
   console.log(`\n${INFO} Starting from nextJobId=${nextId} (deploy smoke test used job 0)`);
 
-  const jobAmount = ethers.parseEther("0.2"); // must be > totalDeposit (0.12 STT)
+  const jobAmount = ethers.parseEther("0.5"); // must be > totalDeposit (0.24 STT)
   const deadline = Math.floor(Date.now() / 1000) + 7 * 24 * 3600;
 
   let jobId: bigint;
@@ -196,18 +196,45 @@ async function main() {
   }
 
   // Print final job state (if we got to invokeEvaluation)
-  if (typeof evalTx !== "undefined") {
-    console.log(`\n${INFO} Polling for platform callback (up to 300s, interval 15s)...`);
+    if (typeof evalTx !== "undefined") {
+    const pollFromBlock = Number(evalTx.blockNumber);
+    console.log(`\n${INFO} Polling for callback from block ${pollFromBlock} (300s timeout, 15s interval)...`);
     const startTime = Date.now();
     const timeout = 300_000;
 
     while (Date.now() - startTime < timeout) {
-      const events = await fetchEvents(escrow, evalTx.blockNumber!, (await provider.getBlockNumber()));
-      const completeEvents = events.filter((e: any) =>
-        ["EvaluationComplete","PaymentReleased","PaymentDisputed","PaymentRefunded","AgentTimedOut","AgentFailed"].includes(e.event)
+      // Use raw RPC to avoid ethers v6 log parsing issues
+      const filter = {
+        address: await escrow.getAddress(),
+        fromBlock: "0x" + pollFromBlock.toString(16),
+        toBlock: "latest"
+      };
+      const rawLogs: any[] = await provider.send("eth_getLogs", [filter]);
+      const completeEvents = rawLogs.filter((l: any) =>
+        l.topics.some((t: string) => {
+          const sigHash = t.toLowerCase();
+          return sigHash === ethers.id("EvaluationComplete(uint256,uint256,string)") ||
+                 sigHash === ethers.id("PaymentReleased(uint256,address,uint256,uint256)") ||
+                 sigHash === ethers.id("PaymentDisputed(uint256,uint256,string)") ||
+                 sigHash === ethers.id("PaymentRefunded(uint256,address,uint256)") ||
+                 sigHash === ethers.id("AgentTimedOut(uint256,uint256)") ||
+                 sigHash === ethers.id("AgentFailed(uint256,uint256)");
+        })
       );
       if (completeEvents.length > 0) {
-        for (const ev of completeEvents) console.log(`     [${ev.event}] block=${ev.blockNumber}`);
+        console.log(`     Received ${completeEvents.length} events (elapsed: ${Math.floor((Date.now() - startTime) / 1000)}s)`);
+        for (const ev of completeEvents) {
+          const sig = ev.topics[0];
+          const name = Object.entries({
+            "EvaluationComplete(uint256,uint256,string)": "EvaluationComplete",
+            "PaymentReleased(uint256,address,uint256,uint256)": "PaymentReleased",
+            "PaymentDisputed(uint256,uint256,string)": "PaymentDisputed",
+            "PaymentRefunded(uint256,address,uint256)": "PaymentRefunded",
+            "AgentTimedOut(uint256,uint256)": "AgentTimedOut",
+            "AgentFailed(uint256,uint256)": "AgentFailed"
+          }).find(([k]) => ethers.id(k) === sig)?.[1] || "Unknown";
+          console.log(`       [${name}] tx=${ev.transactionHash.substring(0, 18)}..`);
+        }
         break;
       }
       await sleep(15_000);

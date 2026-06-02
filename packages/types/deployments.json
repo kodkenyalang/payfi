@@ -1,11 +1,11 @@
 {
   "somnia_testnet": {
     "chainId": "50312",
-    "escrow": "0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e",
-    "nft": "0xc2597766E4209b4c356df6D2568ebd9cfF744092",
+    "escrow": "0x02916cDd952157156d17A255204462e40E90f129",
+    "nft": "0x065A50600376B537Ef5bE32cfc822a9DbCaD6399",
     "platformAddress": "0x037Bb9C718F3f7fe5eCBDB0b600D607b52706776",
-    "llmAgentId": "1",
-    "deployBlock": 398404163,
-    "deployedAt": "2026-06-02T06:19:48.839Z"
+    "llmAgentId": "12847293847561029384",
+    "deployBlock": 398450593,
+    "deployedAt": "2026-06-02T07:37:41.155Z"
   }
 }

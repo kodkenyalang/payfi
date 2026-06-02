@@ -10,8 +10,8 @@ interface IHandleResponse {
 contract MockAgentRequester {
     uint256 private _nextRequestId;
 
-    uint256 public constant RESERVE_DEPOSIT = 0.001 ether;
-    uint256 public constant REWARD_PER_AGENT = 0.03 ether;
+    uint256 public constant RESERVE_DEPOSIT = 0.03 ether;
+    uint256 public constant REWARD_PER_AGENT = 0.07 ether;
 
     uint256 public lastAgentId;
     address public lastCallbackAddress;
