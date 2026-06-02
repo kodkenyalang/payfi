@@ -1,40 +1,78 @@
 services:
   - type: web
-    name: payfi-paystream-api
-    env: node
-    rootDir: apps/api
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npm start
+    name: payfi-api
+    runtime: node
+    plan: starter
+    buildCommand: >
+      cd apps/api &&
+      npm ci --production=false &&
+      npx prisma generate &&
+      npm run build
+    startCommand: >
+      cd apps/api &&
+      npx prisma migrate deploy &&
+      node dist/server.js
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: payfi-paystream-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: payfi-paystream-redis
-          property: connectionString
-      - key: SOMNIA_RPC_URL
         sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SOMNIA_RPC_URL
+        value: https://dream-rpc.somnia.network
       - key: DEPLOYER_PRIVATE_KEY
         sync: false
       - key: CRON_SECRET
         sync: false
       - key: ESCROW_ADDRESS
-        sync: false
-      - key: ORACLE_ADDRESS
-        sync: false
-      - key: EVALUATOR_ADDRESS
-        sync: false
+        value: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e
       - key: NFT_ADDRESS
+        value: 0xc2597766E4209b4c356df6D2568ebd9cfF744092
+      - key: DEPLOY_BLOCK
+        value: "398404163"
+      - key: PORT
+        value: "3001"
+      - key: NODE_ENV
+        value: production
+
+  - type: web
+    name: payfi-web
+    runtime: node
+    plan: starter
+    buildCommand: >
+      cd apps/web &&
+      npm ci &&
+      npm run build
+    startCommand: cd apps/web && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: payfi-api
+          type: web
+          property: host
+      - key: NEXT_PUBLIC_SOMNIA_RPC_URL
+        value: https://dream-rpc.somnia.network
+      - key: NEXT_PUBLIC_ESCROW_ADDRESS
+        value: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e
+      - key: NEXT_PUBLIC_NFT_ADDRESS
+        value: 0xc2597766E4209b4c356df6D2568ebd9cfF744092
+      - key: NEXT_PUBLIC_CHAIN_ID
+        value: "50312"
+
+  - type: cron
+    name: payfi-cron-deadlines
+    runtime: node
+    schedule: "0 */6 * * *"
+    buildCommand: echo "no build needed"
+    startCommand: >
+      curl -s -o /dev/null -w "%{http_code}" -X POST
+      -H "x-cron-secret: $CRON_SECRET"
+      https://$API_HOST/api/cron/check-deadlines
+    envVars:
+      - key: CRON_SECRET
         sync: false
-
-databases:
-  - name: payfi-paystream-db
-    plan: starter
-    postgresMajorVersion: 16
-
-redis:
-  - name: payfi-paystream-redis
-    plan: starter
+      - key: API_HOST
+        fromService:
+          name: payfi-api
+          type: web
+          property: host

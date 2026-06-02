@@ -28,6 +28,12 @@ describe("FlowNFT", () => {
       await expect(nft.setMinter(ethers.ZeroAddress))
         .to.be.revertedWithCustomError(nft, "ZeroAddress");
     });
+
+    it("reverts if called by non-owner", async () => {
+      const { nft, minter, other } = await deploy();
+      await expect(nft.connect(other).setMinter(minter.address))
+        .to.be.revertedWithCustomError(nft, "OwnableUnauthorizedAccount");
+    });
   });
 
   describe("mintReceipt", () => {
@@ -48,6 +54,13 @@ describe("FlowNFT", () => {
       await nft.setMinter(minter.address);
       await expect(nft.connect(other).mintReceipt(freelancer.address, 1n, 90n))
         .to.be.revertedWithCustomError(nft, "OnlyMinter");
+    });
+
+    it("reverts if to address is zero", async () => {
+      const { nft, minter } = await deploy();
+      await nft.setMinter(minter.address);
+      await expect(nft.connect(minter).mintReceipt(ethers.ZeroAddress, 1n, 90n))
+        .to.be.revertedWithCustomError(nft, "ZeroAddress");
     });
   });
 

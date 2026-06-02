@@ -1,0 +1,3 @@
+export const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
+export const NFT_ADDRESS = (process.env.NEXT_PUBLIC_NFT_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";

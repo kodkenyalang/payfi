@@ -23,19 +23,20 @@ enum EvalStatus {
 }
 
 model Job {
-  id                String      @id @default(cuid())
-  jobId             BigInt      @unique
-  clientAddress     String
-  freelancerAddress String
-  amountWei         String
-  deliverableUrl    String
-  requirements      String
-  deadlineAt        DateTime
-  status            JobStatus   @default(FUNDED)
-  transactionHash   String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  evaluations       Evaluation[]
+  id                  String       @id @default(cuid())
+  jobId               BigInt       @unique
+  clientAddress       String
+  freelancerAddress   String
+  amountWei           String
+  deliverableUrl      String
+  requirements        String
+  deadlineAt          DateTime
+  status              JobStatus    @default(FUNDED)
+  transactionHash     String?
+  deliverableReachable Boolean?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  evaluations         Evaluation[]
 }
 
 model Evaluation {
@@ -44,7 +45,7 @@ model Evaluation {
   job         Job        @relation(fields: [jobId], references: [id])
   score       Int?
   reason      String?
-  requestId   String?
+  requestId   String?    @unique
   status      EvalStatus @default(PENDING)
   triggeredAt DateTime   @default(now())
   completedAt DateTime?

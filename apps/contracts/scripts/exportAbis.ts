@@ -9,8 +9,6 @@ async function main() {
 
   const contractNames = [
     "FlowFiEscrow",
-    "DeliverableOracle",
-    "CompletionEvaluator",
     "FlowNFT"
   ];
 

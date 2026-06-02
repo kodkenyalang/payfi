@@ -4,7 +4,7 @@
   "scripts": {
     "build": "hardhat compile",
     "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy.ts --network somnia_devnet",
+    "deploy": "hardhat run scripts/deploy.ts --network somnia_testnet",
     "export-abis": "hardhat run scripts/exportAbis.ts"
   },
   "devDependencies": {

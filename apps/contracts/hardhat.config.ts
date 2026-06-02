@@ -18,12 +18,11 @@ const config: HardhatUserConfig = {
     }
   },
   networks: {
-    somnia_devnet: {
+    somnia_testnet: {
       url: SOMNIA_RPC_URL,
       accounts: [DEPLOYER_PRIVATE_KEY],
-      chainId: 50311,
-      timeout: 60000,
-      httpHeaders: {}
+      chainId: 50312,
+      timeout: 60000
     },
     hardhat: {
       chainId: 31337
