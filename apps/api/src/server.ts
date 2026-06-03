@@ -10,6 +10,9 @@ import "express-async-errors";
 import jobRoutes from "./routes/jobs";
 import { startEventListener } from "./listeners/contractEvents";
 import { evaluationWorker } from "./workers/evaluationWorker";
+import { prisma } from "./lib/prisma";
+
+const DEADLINE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +31,26 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(503).json({ error: "SERVICE_UNAVAILABLE", message: err.message });
 });
 
+async function checkDeadlines(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const atRisk = await prisma.job.findMany({
+      where: {
+        deadlineAt: { lt: cutoff },
+        status: { in: ["FUNDED", "SUBMITTED"] }
+      }
+    });
+    if (atRisk.length > 0) {
+      console.warn(`[deadline-checker] ${atRisk.length} job(s) approaching deadline:`);
+      for (const j of atRisk) {
+        console.warn(`  jobId=${j.jobId} deadline=${j.deadlineAt.toISOString()} status=${j.status}`);
+      }
+    }
+  } catch (e: any) {
+    console.error(`[deadline-checker] check failed: ${e.message}`);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`PayFi API running on port ${PORT}`);
 
@@ -36,7 +59,9 @@ app.listen(PORT, () => {
     console.log("API continues in degraded mode — event polling offline");
   });
 
-  // BullMQ init status is logged by evaluationWorker module
+  setInterval(checkDeadlines, DEADLINE_CHECK_INTERVAL_MS);
+  checkDeadlines(); // run once immediately on startup
+  console.log("Deadline checker armed (every 6 hours)");
 });
 
 process.on("SIGTERM", async () => {

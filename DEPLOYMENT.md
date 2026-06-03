@@ -48,7 +48,6 @@ Job amounts must be **> 0.24 STT** to cover the platform deposit.
 | `REDIS_URL` | Yes | Upstash Redis URL (`redis://default:<token>@<host>:6379`) |
 | `SOMNIA_RPC_URL` | Yes | `https://dream-rpc.somnia.network` |
 | `DEPLOYER_PRIVATE_KEY` | Yes | Deployer wallet private key |
-| `CRON_SECRET` | Yes | Shared secret for cron-to-API auth |
 | `ESCROW_ADDRESS` | Yes | `0x02916cDd952157156d17A255204462e40E90f129` |
 | `NFT_ADDRESS` | Yes | `0x065A50600376B537Ef5bE32cfc822a9DbCaD6399` |
 | `DEPLOY_BLOCK` | Yes | `398450593` |
@@ -115,16 +114,14 @@ git push -u origin main
 Use the existing `render.yaml` blueprint:
 
 | Service | Type | Plan | Notes |
-|---|---|---|---|
-| `payfi-api` | Web | Starter | Health check at `/api/health` |
+|---|---|---|---|---|
+| `payfi-api` | Web | Starter | Health check at `/api/health`, includes internal deadline checker |
 | `payfi-web` | Web | Starter (free) | Connects to API via internal hostname |
-| `payfi-cron-deadlines` | Cron | Free | Runs every 6 hours |
 
 **Manual steps:**
 1. Go to Render Dashboard → Blueprint → `render.yaml`
 2. For each service, manually fill the synced env vars:
-   - `payfi-api`: `DATABASE_URL`, `REDIS_URL`, `DEPLOYER_PRIVATE_KEY`, `CRON_SECRET`
-   - `payfi-cron-deadlines`: `CRON_SECRET`
+   - `payfi-api`: `DATABASE_URL`, `REDIS_URL`, `DEPLOYER_PRIVATE_KEY`
 
 ### 5. Verify
 
@@ -202,10 +199,11 @@ npx prisma db push
 
 If Redis is unavailable or a placeholder URL is detected, BullMQ skips initialization entirely. The `evaluationQueue.add()` call is null-guarded in the submit route. Works fine without Redis — URL reachability checks are disabled but all other functionality works.
 
-### Cron: Deadline Checker
+### Deadline Checker (Merged Into API)
 
-Runs every 6 hours. Calls `/api/cron/check-deadlines` which:
-1. Reads all FUNDED/SUBMITTED jobs from DB
-2. Checks `block.timestamp > deadline + TIMEOUT_BUFFER` via RPC
-3. Calls `claimRefundAfterTimeout` for timed-out jobs
-4. Updates DB with REFUNDED status
+The cron service is merged directly into the API as an internal `setInterval`:
+
+- Frequency: Every 6 hours (first check runs immediately on startup)
+- Scope: Queries DB for FUNDED/SUBMITTED jobs where `deadlineAt < now + 24h`
+- Action: Logs warnings for at-risk jobs
+- Chaos engineering: Wrapped in try/catch — one failure never crashes the API or stops the next cycle. No `CRON_SECRET` auth needed (no external trigger). No external service dependency. Self-contained within the API process.

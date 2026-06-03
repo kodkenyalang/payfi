@@ -156,12 +156,7 @@ router.post("/jobs/:jobId/submit", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/cron/check-deadlines", async (req: Request, res: Response) => {
-  const secret = req.headers["x-cron-secret"];
-  if (secret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: "UNAUTHORIZED" });
-  }
-
+router.post("/cron/check-deadlines", async (_req: Request, res: Response) => {
   const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const atRisk = await prisma.job.findMany({
     where: {

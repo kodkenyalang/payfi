@@ -15,8 +15,6 @@ services:
         value: https://dream-rpc.somnia.network
       - key: DEPLOYER_PRIVATE_KEY
         sync: false
-      - key: CRON_SECRET
-        sync: false
       - key: ESCROW_ADDRESS
         value: "0x02916cDd952157156d17A255204462e40E90f129"
       - key: NFT_ADDRESS
@@ -48,18 +46,3 @@ services:
         value: "0x065A50600376B537Ef5bE32cfc822a9DbCaD6399"
       - key: NEXT_PUBLIC_CHAIN_ID
         value: "50312"
-
-  - type: cron
-    name: payfi-cron-deadlines
-    runtime: node
-    schedule: "0 */6 * * *"
-    buildCommand: echo "no build needed"
-    startCommand: 'curl -s -o /dev/null -w "%{http_code}" -X POST -H "x-cron-secret: $CRON_SECRET" https://$API_HOST/api/cron/check-deadlines'
-    envVars:
-      - key: CRON_SECRET
-        sync: false
-      - key: API_HOST
-        fromService:
-          name: payfi-api
-          type: web
-          property: host
