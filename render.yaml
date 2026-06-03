@@ -3,13 +3,8 @@ services:
     name: payfi-api
     runtime: node
     plan: starter
-    buildCommand: >
-      npm ci &&
-      npx prisma generate --schema=apps/api/prisma/schema.prisma &&
-      npx turbo run build --filter=@payfi/api...
-    startCommand: >
-      npx prisma db push --schema=apps/api/prisma/schema.prisma &&
-      node apps/api/dist/server.js
+    buildCommand: npm ci && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx turbo run build --filter=@payfi/api...
+    startCommand: npx prisma db push --schema=apps/api/prisma/schema.prisma && node apps/api/dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -37,9 +32,7 @@ services:
     name: payfi-web
     runtime: node
     plan: starter
-    buildCommand: >
-      npm ci &&
-      npx turbo run build --filter=@payfi/web...
+    buildCommand: npm ci && npx turbo run build --filter=@payfi/web...
     startCommand: cd apps/web && npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
@@ -61,10 +54,7 @@ services:
     runtime: node
     schedule: "0 */6 * * *"
     buildCommand: echo "no build needed"
-    startCommand: >
-      curl -s -o /dev/null -w "%{http_code}" -X POST
-      -H "x-cron-secret: $CRON_SECRET"
-      https://$API_HOST/api/cron/check-deadlines
+    startCommand: 'curl -s -o /dev/null -w "%{http_code}" -X POST -H "x-cron-secret: $CRON_SECRET" https://$API_HOST/api/cron/check-deadlines'
     envVars:
       - key: CRON_SECRET
         sync: false
