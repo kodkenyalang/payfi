@@ -36,17 +36,12 @@ app.listen(PORT, () => {
     console.log("API continues in degraded mode — event polling offline");
   });
 
-  try {
-    console.log("BullMQ worker initialized");
-  } catch (e: any) {
-    console.error("BullMQ worker init failed:", e.message);
-    console.log("API continues in degraded mode — URL reachability checks disabled");
-  }
+  // BullMQ init status is logged by evaluationWorker module
 });
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received, shutting down...");
-  try { await evaluationWorker.close(); } catch {}
+  try { if (evaluationWorker) await evaluationWorker.close(); } catch {}
   process.exit(0);
 });
 

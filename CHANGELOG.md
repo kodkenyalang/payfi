@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.3.0] — 2026-06-03
+
+### Added
+- **Full E2E testnet success**: All 10 checks passing on Somnia testnet.
+  - `invokeEvaluation` accepted by platform → `agentRequestId = 3978875`
+  - Platform callback in ~15s → `EvaluationComplete(score=85, "...")`
+  - `PaymentReleased` → job COMPLETE, funds released autonomously
+- **`IAgent.inferString` selector integration**: Payload uses `abi.encodeWithSelector(IAgent.inferString.selector, prompt, "", false, emptyAllowed)` per Somnia platform docs.
+- **Frontend → API full loop**: After `createJob` tx confirms, frontend calls `POST /api/jobs` with tx hash; API parses `JobCreated` event and persists to Neon DB. `useJobEvents` hook shows real-time status updates.
+- **Live event display**: JobStatusCard component polls API every 5s and watches on-chain events via `useWatchContractEvent`.
+
+### Changed
+- **Agent ID**: `1` → `12847293847561029384` (correct LLM Inference agent on Somnia testnet).
+- **Per-agent cost**: 0.03 STT → 0.07 STT (matches Somnia LLM Inference agent spec).
+- **Total deposit**: 0.031 STT → 0.24 STT (= 0.03 reserve + 0.07 × 3 validators).
+- **E2E test job amount**: 0.2 STT → 0.5 STT (must be > total deposit 0.24 STT).
+- **Event poller batch size**: 5000 → 500 blocks (Somnia RPC limits `eth_getLogs` range to 1000).
+- **BullMQ Redis**: Made gracefully optional with placeholder detection, TLS support for Upstash, and `maxRetriesPerRequest: null`.
+- **Event listener**: FK constraint violations silently handled (historical events for jobs not in DB).
+- **Frontend layout**: Dark theme, RainbowKit provider, live job status card with event feed.
+
+### Fixed
+- `0x0ede9759` (`InvalidAgentId(1)`) — resolved by discovering correct agent ID `12847293847561029384` from Somnia docs.
+- `0x85ad0db4...` — resolved by increasing job amount from 0.2 to 0.5 STT (> 0.24 total deposit).
+- Frontend BigInt literal compatibility (ES2017 target does not support `100n` syntax).
+- `pino-pretty` module resolution for Wagmi/RainbowKit in Next.js bundler.
+
+### Security
+- Deployer wallet key rotated. `.env` separated from `.env.example`.
+- `evaluationQueue` null-guarded in submit route (BullMQ gracefully skips when Redis is a placeholder).
+- Event handler wraps each Prisma operation in try/catch — one event failure never cascades.
+
+### Deployment
+- Current deployed addresses (Somnia testnet):
+  - `FlowFiEscrow: 0x02916cDd952157156d17A255204462e40E90f129`
+  - `FlowNFT: 0x065A50600376B537Ef5bE32cfc822a9DbCaD6399`
+  - Deploy block: `398450593`
+  - Agent ID: `12847293847561029384`, cost: `0.07 STT`
+- Neon PostgreSQL provisioned and `prisma db push` applied.
+- Upstash Redis provisioned and BullMQ worker initialized.
+- Full local stack running: frontend (port 3000) ↔ API (port 3001) ↔ Somnia testnet.
+
+## [0.2.1] — 2026-06-02
+
+### Added
+- E2E test matrix with 9/10 checks passing (invokeEvaluation blocked by unknown agent ID).
+- Platform bytecode analysis tool (`scripts/analyze-platform.ts`) confirming UUPS proxy at `0x037Bb9C7...` delegating to `0xc49e656b...`.
+- Agent ID discovery: Somnia agent IDs are large uint256 values (JSON API = `13174292974160097713`, LLM = `12847293847561029384`).
+- Comprehensive README, CHANGELOG, DEPLOYMENT.md written.
+- `EVAL_MATRIX.md` with 40+ scenarios across contract state machine, API, event listener, frontend, chaos engineering, and blast radius.
+
+### Changed
+- Somnia RPC from `shannon.sepolia.somnia.network` to `dream-rpc.somnia.network` in all configs.
+- `apps/api/.env` updated with correct agent ID `12847293847561029384` and cost `0.07 STT`.
+- Agent payload changed from `abi.encode(prompt)` to `abi.encodeWithSelector(IAgent.inferString.selector, prompt, "", false, emptyAllowed)`.
+
+### Fixed
+- `config.ts` lazy validation ensuring `dotenv.config()` runs before env validation.
+
 ## [0.2.0] — 2026-06-02
 
 ### Added
@@ -36,7 +95,7 @@
 
 ### Deployment
 - Contracts deployed to Somnia testnet:
-    - `FlowFiEscrow: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e`
+  - `FlowFiEscrow: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e`
   - `FlowNFT: 0xc2597766E4209b4c356df6D2568ebd9cfF744092`
   - Deploy block: `398404163`
 - Deployer wallet: `0xF639694848072E2d1fa77371707f33663B6eeA86` (funded with 100 STT)

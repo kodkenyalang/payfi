@@ -142,9 +142,11 @@ router.post("/jobs/:jobId/submit", async (req: Request, res: Response) => {
       data: { status: "SUBMITTED", deliverableUrl: body.deliverableUrl }
     });
 
-    await evaluationQueue.add("check-reachability", { jobId, deliverableUrl: body.deliverableUrl });
+    if (evaluationQueue) {
+      await evaluationQueue.add("check-reachability", { jobId, deliverableUrl: body.deliverableUrl });
+    }
 
-    res.json({ success: true, message: "Work submitted, reachability check queued" });
+    res.json({ success: true, message: "Work submitted" });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: "VALIDATION_ERROR", details: err.errors });

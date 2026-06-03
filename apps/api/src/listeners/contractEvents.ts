@@ -11,7 +11,7 @@ const httpClient = createPublicClient({
 
 const EVENTS = ["EvaluationComplete", "PaymentReleased", "PaymentRefunded", "PaymentDisputed"] as const;
 
-const BATCH_SIZE = 5000n;
+const BATCH_SIZE = 500n; // Somnia RPC limits eth_getLogs range to 1000 blocks
 const POLL_INTERVAL_MS = 12_000;
 
 let lastPolledBlock = 0n;
@@ -48,45 +48,52 @@ async function processEvents(fromBlock: bigint): Promise<bigint> {
 }
 
 async function handleEvent(eventName: string, log: any): Promise<void> {
-  const args = log.args;
-  switch (eventName) {
-    case "EvaluationComplete": {
-      await prisma.evaluation.upsert({
-        where: { requestId: log.transactionHash },
-        create: {
-          jobId: args.jobId!.toString(),
-          score: Number(args.score),
-          reason: args.reason!,
-          status: "COMPLETE",
-          completedAt: new Date()
-        },
-        update: {
-          score: Number(args.score),
-          reason: args.reason!,
-          status: "COMPLETE",
-          completedAt: new Date()
+  try {
+    const args = log.args;
+    switch (eventName) {
+      case "EvaluationComplete":
+        try {
+          await prisma.evaluation.upsert({
+            where: { requestId: log.transactionHash },
+            create: {
+              jobId: args.jobId!.toString(),
+              score: Number(args.score),
+              reason: args.reason!,
+              status: "COMPLETE",
+              completedAt: new Date()
+            },
+            update: {
+              score: Number(args.score),
+              reason: args.reason!,
+              status: "COMPLETE",
+              completedAt: new Date()
+            }
+          });
+        } catch (e: any) {
+          if (!e.message?.includes("Foreign key constraint")) throw e;
         }
-      });
-      break;
+        break;
+      case "PaymentReleased":
+        await prisma.job.updateMany({
+          where: { jobId: BigInt(args.jobId) },
+          data: { status: "COMPLETE" }
+        });
+        break;
+      case "PaymentRefunded":
+        await prisma.job.updateMany({
+          where: { jobId: BigInt(args.jobId) },
+          data: { status: "REFUNDED" }
+        });
+        break;
+      case "PaymentDisputed":
+        await prisma.job.updateMany({
+          where: { jobId: BigInt(args.jobId) },
+          data: { status: "DISPUTED" }
+        });
+        break;
     }
-    case "PaymentReleased":
-      await prisma.job.updateMany({
-        where: { jobId: BigInt(args.jobId) },
-        data: { status: "COMPLETE" }
-      });
-      break;
-    case "PaymentRefunded":
-      await prisma.job.updateMany({
-        where: { jobId: BigInt(args.jobId) },
-        data: { status: "REFUNDED" }
-      });
-      break;
-    case "PaymentDisputed":
-      await prisma.job.updateMany({
-        where: { jobId: BigInt(args.jobId) },
-        data: { status: "DISPUTED" }
-      });
-      break;
+  } catch (e: any) {
+    console.error(`Event handler error [${eventName}]: ${e.message}`);
   }
 }
 
