@@ -4,14 +4,12 @@ services:
     runtime: node
     plan: starter
     buildCommand: >
-      cd apps/api &&
-      npm ci --production=false &&
-      npx prisma generate &&
-      npm run build
+      npm ci &&
+      npx prisma generate --schema=apps/api/prisma/schema.prisma &&
+      npx turbo run build --filter=@payfi/api...
     startCommand: >
-      cd apps/api &&
-      npx prisma migrate deploy &&
-      node dist/server.js
+      npx prisma db push --schema=apps/api/prisma/schema.prisma &&
+      node apps/api/dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -25,11 +23,11 @@ services:
       - key: CRON_SECRET
         sync: false
       - key: ESCROW_ADDRESS
-        value: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e
+        value: "0x02916cDd952157156d17A255204462e40E90f129"
       - key: NFT_ADDRESS
-        value: 0xc2597766E4209b4c356df6D2568ebd9cfF744092
+        value: "0x065A50600376B537Ef5bE32cfc822a9DbCaD6399"
       - key: DEPLOY_BLOCK
-        value: "398404163"
+        value: "398450593"
       - key: PORT
         value: "3001"
       - key: NODE_ENV
@@ -40,9 +38,8 @@ services:
     runtime: node
     plan: starter
     buildCommand: >
-      cd apps/web &&
       npm ci &&
-      npm run build
+      npx turbo run build --filter=@payfi/web...
     startCommand: cd apps/web && npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
@@ -53,9 +50,9 @@ services:
       - key: NEXT_PUBLIC_SOMNIA_RPC_URL
         value: https://dream-rpc.somnia.network
       - key: NEXT_PUBLIC_ESCROW_ADDRESS
-        value: 0x1aB4A7DB253c7Ac1BB7A970bd69Dff728d09788e
+        value: "0x02916cDd952157156d17A255204462e40E90f129"
       - key: NEXT_PUBLIC_NFT_ADDRESS
-        value: 0xc2597766E4209b4c356df6D2568ebd9cfF744092
+        value: "0x065A50600376B537Ef5bE32cfc822a9DbCaD6399"
       - key: NEXT_PUBLIC_CHAIN_ID
         value: "50312"
 
