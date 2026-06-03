@@ -289,6 +289,6 @@ packages/
   types/       Shared ABI JSON + deployments.json
 ```
 
-## License
+## Licence
 
-MIT
+Commercial
