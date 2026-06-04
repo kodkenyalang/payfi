@@ -64,9 +64,11 @@
 | # | Action | Expected | Status |
 |---|---|---|---|
 | 1 | Connect wallet (RainbowKit) | Somnia testnet detected, wallet address shown | ⏳ |
-| 2 | Fill create job form + submit | wagmi tx sent, JobCreated event received | ⏳ |
+| 2 | Fill create job form + submit | wagmi tx sent, JobCreated event received | ✅ code |
 | 3 | View job list | Fetches from API, displays jobs | ⏳ |
 | 4 | Wallet disconnect | Clears state, connect button shows | ⏳ |
+
+Legend: `✅ code` = fix applied in source, pending testnet verification; `✅` = verified on testnet.
 
 ## F. Chaos Engineering
 
@@ -78,6 +80,10 @@
 | 4 | NFT mint fails | PaymentReleased still fires with NFTMintFailed event | ✅ |
 | 5 | Deployer wallet runs out of STT | invokeEvaluation reverts with InsufficientAgentDeposit | ✅ |
 | 6 | HTTP poller error isolated per cycle | try/catch each cycle, next cycle unaffected | ✅ |
+| 7 | BigInt uint256 max in tx payload | JSON.stringify completes without error via bigIntReplacer | ✅ |
+| 8 | 100 rapid button clicks on Create Job | Exactly 1 eth_sendTransaction RPC call; button disabled mid-flight | ✅ |
+| 9 | 10,000 mount/unmount cycles of wallet provider | Zero listener leaks; on() count = removeListener() count | ✅ |
+| 10 | Invalid date in deadline field (empty string) | BigInt(NaN) caught by try/catch; mutex reset; apiError shown | ✅ |
 
 ## G. Blast Radius
 

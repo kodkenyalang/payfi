@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.1] — 2026-06-04
+
+### Fixed
+- **BigInt serialization crash (O1)**: `res.json(PrismaBigInt)` in API was throwing "Do not know how to serialize a BigInt". Fixed with Express global `json replacer` (`app.set("json replacer", bigIntReplacer)`). Frontend fetch also uses `bigIntReplacer` defensively.
+- **`wallet_requestPermissions` queue collision (O2)**: Rapid/clustered button clicks caused multiple concurrent MetaMask RPC calls. Fixed with `useRef` hard mutex guard + `useState` + `useEffect` reset on wagmi state changes.
+- **EventEmitter listener leak (O3)**: 11+ `close`/`end` listeners accumulated across component re-renders, causing `MaxListenersExceededWarning` and ObjectMultiplex orphan streams. Fixed with `useEffect` cleanup for `accountsChanged`/`chainChanged` + `setMaxListeners(20)`.
+- **UI success state on failure (O5)**: Button showed "Job Created!" before tx confirmed. Fixed with `txState` string union (`idle|pending|confirming|success`) that only transitions to success on confirmed receipt.
+- **UseWriteContract sync error uncaught**: `handleCreate` now wraps `writeContract` + `BigInt()` in try/catch to reset mutex and surface errors on invalid input (e.g., empty deadline → `BigInt(NaN)`).
+
+### Added
+- **`bigIntReplacer` utility**: `apps/web/src/utils/bigint-serializer.ts` — JSON.stringify replacer that converts `bigint` → `string`.
+- **`EvaluationRequested` event listener**: `useJobEvents` hook now watches `EvaluationRequested` (was emitted by contract but never consumed by frontend). Displays `EvaluationRequested: agentRequestId=...` in live event feed.
+- **Chaos engineering tests**: 23 tests across 3 suites verifying BigInt range (`uint256 max`), submission mutex (1000 rounds × 5 concurrent), and EventEmitter cleanup (10,000 mount/unmount cycles with zero leaks).
+
+### Changed
+- **README diagrams reconciled with codebase**: Architecture diagram now shows `EW --> PM` (BullMQ worker writes via Prisma) and `JR --> RD` (job routes enqueue to Redis). Sequence diagram corrects `submitWork` detection attribution, un-conflates `EvaluationComplete` vs `PaymentReleased`, and uses proper event emission notation.
+
 ## [0.3.0] — 2026-06-03
 
 ### Added
