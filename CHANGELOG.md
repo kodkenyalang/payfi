@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.3] — 2026-06-04
+
+### Fixed
+- **Explorer link broken (tx hash not findable)**: All explorer URLs used `shannon.explorer.somnia.network` (dot) which does not resolve. The correct URL is `shannon-explorer.somnia.network` (hyphen). Transactions were landing on the correct testnet chain (RPC verified: chain ID 50312), but the explorer links in the UI were pointing to a non-resolving domain.
+
+### Changed
+- **Explorer URL** in `apps/web/src/lib/chains.ts`, `apps/api/src/lib/chains.ts`, and `apps/web/src/app/page.tsx`: `shannon.explorer.somnia.network` → `shannon-explorer.somnia.network`
+- **Hardcoded explorer links** in `page.tsx:365` consolidated to use `SOMNIA_EXPLORER` constant
+
+### Added
+- **`network-guard.ts`** (`apps/web/src/lib/network-guard.ts`): Three Poka-Yoke guards for defense-in-depth:
+  - `assertCorrectNetwork(provider)` — throws actionable error if provider chain ID !== 50312
+  - `switchToSomniaTestnet()` — auto-switches MetaMask or prompts add-network via `wallet_switchEthereumChain` / `wallet_addEthereumChain`
+  - `getTxExplorerUrl(txHash)` — returns correct testnet explorer URL for a transaction hash
+- **`network-guard.test.ts`**: 11 unit tests covering chain assertion (50312 resolves, 5031/1/0 throws), network switch (switch + add flows, provider missing), and explorer URL generation (correct domain, no mainnet leak, full hash preservation)
+
 ## [0.3.2] — 2026-06-04
 
 ### Fixed

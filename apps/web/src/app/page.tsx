@@ -71,7 +71,7 @@ interface StructuredEvent {
   link?: string;
 }
 
-const SOMNIA_EXPLORER = "https://shannon.explorer.somnia.network";
+const SOMNIA_EXPLORER = "https://shannon-explorer.somnia.network";
 
 function EventLog({ events, txHash: jobTxHash }: { events: StructuredEvent[]; txHash?: string }) {
   if (events.length === 0) return null;
@@ -362,7 +362,7 @@ function CreateJobForm() {
         {displayTxHash && (
           <p style={{ color: "#94a3b8", fontSize: 12, margin: "8px 0 0", fontFamily: "monospace" }}>
             Tx:{" "}
-            <a href={`https://shannon.explorer.somnia.network/tx/${displayTxHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8" }}>
+            <a href={`${SOMNIA_EXPLORER}/tx/${displayTxHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8" }}>
               {displayTxHash.slice(0, 10)}...{displayTxHash.slice(-6)}
             </a>
           </p>

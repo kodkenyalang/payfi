@@ -172,6 +172,7 @@ MetaMask configuration:
 - RPC URL: `https://dream-rpc.somnia.network`
 - Chain ID: `50312`
 - Currency symbol: `STT`
+- Block Explorer: `https://shannon-explorer.somnia.network`
 
 ---
 
