@@ -63,10 +63,14 @@
 
 | # | Action | Expected | Status |
 |---|---|---|---|
-| 1 | Connect wallet (RainbowKit) | Somnia testnet detected, wallet address shown | ⏳ |
+| 1 | Connect wallet (RainbowKit) | Somnia testnet detected, wallet address shown | ✅ code |
 | 2 | Fill create job form + submit | wagmi tx sent, JobCreated event received | ✅ code |
-| 3 | View job list | Fetches from API, displays jobs | ⏳ |
-| 4 | Wallet disconnect | Clears state, connect button shows | ⏳ |
+| 3 | View job job status card | Polls API + watches on-chain events, displays LIVE events with tx hashes | ✅ code |
+| 4 | Wallet disconnect | Clears state, connect button shows | ✅ code |
+| 5 | SSR hydration (no wallet) | Stable placeholder rendered, no #418/#423 errors | ✅ code |
+| 6 | Live Events agent trace | Structured display with icons, score, reason, Somnia explorer links per event | ✅ code |
+| 7 | Amount display | Shows correct decimal (e.g. 3.0 STT not 300 STT) via formatEther | ✅ code |
+| 8 | Button retry on failure | "Try Again" shown on write/API error, can resubmit | ✅ code |
 
 Legend: `✅ code` = fix applied in source, pending testnet verification; `✅` = verified on testnet.
 
@@ -84,6 +88,10 @@ Legend: `✅ code` = fix applied in source, pending testnet verification; `✅` 
 | 8 | 100 rapid button clicks on Create Job | Exactly 1 eth_sendTransaction RPC call; button disabled mid-flight | ✅ |
 | 9 | 10,000 mount/unmount cycles of wallet provider | Zero listener leaks; on() count = removeListener() count | ✅ |
 | 10 | Invalid date in deadline field (empty string) | BigInt(NaN) caught by try/catch; mutex reset; apiError shown | ✅ |
+| 11 | SSR hydration with wallet connected in persisted state | Server emits skeleton → client hydrates without mismatch (#418 fix) | ✅ code |
+| 12 | window.ethereum used during Next.js SSR | Suspense boundary + isMounted guard prevents crash (#423 fix) | ✅ code |
+| 13 | Amount display with fractional STT (e.g. 0.5) | formatEther shows "0.5 STT", not "500000000000000000 STT" | ✅ code |
+| 14 | Agent event feed on re-render | StructuredEvent deduped by incrementing id; no duplicate renders | ✅ code |
 
 ## G. Blast Radius
 

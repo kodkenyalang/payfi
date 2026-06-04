@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.2] — 2026-06-04
+
+### Fixed
+- **React hydration error #418 (ConnectWallet mismatch)**: Server rendered `<button>Connect Wallet</button>` but client hydrated with wallet address when `isConnected=true` from persisted wagmi state. Fixed with `isMounted` state guard — server emits stable height placeholder, client replaces after first render.
+- **React hydration error #423 (window not defined)**: Components using `window.ethereum.setMaxListeners` crashed during SSR when Next.js server-side rendered before client JS loaded. Fixed by wrapping `ConnectWallet` and `CreateJobForm` in `<Suspense>` boundaries + per-component `isMounted` guards.
+- **Amount display bug (300 STT instead of 3.0 STT)**: Line `BigInt(amountWei) / 10^16` used integer division 10^16 instead of 10^18, producing 300x inflated values. Fixed with `formatEther(BigInt(amountWei))` from viem.
+- **EventEmitter listener leak on re-render**: `accountsChanged`/`chainChanged` handlers added on each render but never cleaned up. Changed no-op handlers to meaningful resets with proper `removeListener` in `useEffect` return.
+- **Agent event trace invisible**: `Live Events` panel only showed unstructured strings. Added typed `StructuredEvent` interface with icon, label, detail, and clickable explorer links per event type. Each contract event now displays its tx hash linking to Somnia explorer.
+
+### Added
+- **`StructuredEvent` type**: `apps/web/src/app/page.tsx:64-72` — typed event interface with `id`, `time`, `icon`, `label`, `detail`, `txHash` fields for structured Live Events display.
+- **`AgentEvent` type**: `apps/web/src/types/agent-events.ts` — typed union schema for 6 agent lifecycle events (`agent.invoked`, `agent.reasoning`, `agent.decision`, `agent.tx.submitted`, `agent.tx.confirmed`, `agent.tx.failed`).
+- **`OnLogMeta` interface**: `apps/web/src/hooks/useJobEvents.ts:6-9` — captures `txHash` and `blockNumber` from raw event logs. Added `pick()` helper to extract args + meta from log array.
+- **Transaction hash links**: Every `CreateJobForm` and `JobStatusCard` now shows clickable Somnia explorer links for each event's tx hash.
+- **Button state machine error state**: `txState` now includes `"error"` state; button shows "Try Again" with red background on write/API failure, stays clickable for retry.
+- **Agent trace visibility**: `onEvaluationRequested` displays 🤖 icon + agent request ID + tx hash link. `onEvaluationComplete` shows ✅/⚖️/❌ icon + score + reason + tx hash link.
+
+### Changed
+- **`useJobEvents` callbacks**: All 5 event callbacks now receive `meta: { txHash, blockNumber }` as the last parameter. Inline `logs.find(...)` logic refactored into shared `pick()` helper.
+- **EventEmitter handlers**: `accountsChanged` now resets `createdJob` state on disconnect. `chainChanged` resets `createdJob` on network switch. Both handlers are properly cleaned up on unmount.
+- **Amount display**: Manual `BigInt / 10^n` replaced with `formatEther()` from viem for correct decimal placement.
+- **Diagram concurrency check**: Ran full trace of all 6 mermaid diagram edges against source code — all connections confirmed accurate. No diagram changes needed.
+
 ## [0.3.1] — 2026-06-04
 
 ### Fixed

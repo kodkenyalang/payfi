@@ -4,9 +4,10 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { injected } from "wagmi/connectors";
 import escrowAbi from "@payfi/types/abis/FlowFiEscrow.json";
 import { ESCROW_ADDRESS, API_URL } from "../lib/config";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useJobEvents } from "../hooks/useJobEvents";
 import { bigIntReplacer } from "../utils/bigint-serializer";
+import { formatEther } from "viem";
 
 type JobStatus = "FUNDED" | "SUBMITTED" | "EVALUATING" | "COMPLETE" | "DISPUTED" | "REFUNDED";
 
@@ -34,6 +35,13 @@ function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) {
+    return <div style={{ height: 44 }} />;
+  }
 
   if (isConnected) {
     return (
@@ -53,40 +61,110 @@ function ConnectWallet() {
   );
 }
 
-function EventLog({ events }: { events: string[] }) {
+interface StructuredEvent {
+  id: number;
+  time: string;
+  icon: string;
+  label: string;
+  detail?: string;
+  txHash?: string;
+  link?: string;
+}
+
+const SOMNIA_EXPLORER = "https://shannon.explorer.somnia.network";
+
+function EventLog({ events, txHash: jobTxHash }: { events: StructuredEvent[]; txHash?: string }) {
   if (events.length === 0) return null;
   return (
     <div style={{ marginTop: 16, padding: 12, background: "#0f172a", borderRadius: 8, border: "1px solid #1e293b" }}>
       <h4 style={{ margin: "0 0 8px", color: "#94a3b8", fontSize: 13 }}>Live Events</h4>
-      {events.map((e, i) => (
-        <div key={i} style={{ color: "#22d3ee", fontSize: 13, fontFamily: "monospace", padding: "2px 0" }}>◈ {e}</div>
+      {jobTxHash && (
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, fontFamily: "monospace" }}>
+          Tx:{" "}
+          <a href={`${SOMNIA_EXPLORER}/tx/${jobTxHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8" }}>
+            {jobTxHash.slice(0, 10)}...{jobTxHash.slice(-6)}
+          </a>
+        </div>
+      )}
+      {events.map((e) => (
+        <div key={e.id} style={{ fontSize: 13, fontFamily: "monospace", padding: "3px 0", borderBottom: "1px solid #1e293b" }}>
+          <span style={{ color: "#64748b", marginRight: 8 }}>{e.time}</span>
+          <span style={{ marginRight: 4 }}>{e.icon}</span>
+          <span style={{ color: e.txHash ? "#22d3ee" : "#e2e8f0" }}>{e.label}</span>
+          {e.detail && (
+            <div style={{ color: "#94a3b8", paddingLeft: 20, marginTop: 2, fontSize: 12, whiteSpace: "pre-wrap" }}>{e.detail}</div>
+          )}
+          {e.txHash && (
+            <div style={{ paddingLeft: 20, marginTop: 1 }}>
+              <a href={`${SOMNIA_EXPLORER}/tx/${e.txHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", fontSize: 11 }}>
+                {e.txHash.slice(0, 10)}...{e.txHash.slice(-6)}
+              </a>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
 }
 
-function JobStatusCard({ jobId, job, events, onLogEvent }: { jobId: bigint; job: JobInfo | null; events: string[]; onLogEvent: (msg: string) => void }) {
+function JobStatusCard({ jobId, job, structuredEvents, onLogEvent, jobTxHash }: { jobId: bigint; job: JobInfo | null; structuredEvents: StructuredEvent[]; onLogEvent: (e: StructuredEvent) => void; jobTxHash?: string }) {
   const [fetchedJob, setFetchedJob] = useState<JobInfo | null>(job);
+  let eventId = useRef(0);
 
   useJobEvents({
     jobId,
-    onEvaluationComplete: (score, reason) => {
-      onLogEvent(`EvaluationComplete: score=${score} "${reason.slice(0, 40)}..."`);
+    onEvaluationComplete: (score, reason, meta) => {
+      const label = score >= 80 ? "Agent approved payment" : score >= 50 ? "Agent disputed payment" : "Agent rejected payment";
+      onLogEvent({
+        id: ++eventId.current,
+        time: new Date().toLocaleTimeString(),
+        icon: score >= 80 ? "✅" : score >= 50 ? "⚖️" : "❌",
+        label,
+        detail: `Score: ${score}\nReason: ${reason}`,
+        txHash: meta.txHash,
+      });
       refreshJob();
     },
-    onEvaluationRequested: (agentRequestId) => {
-      onLogEvent(`EvaluationRequested: agentRequestId=${agentRequestId}`);
+    onEvaluationRequested: (agentRequestId, meta) => {
+      onLogEvent({
+        id: ++eventId.current,
+        time: new Date().toLocaleTimeString(),
+        icon: "🤖",
+        label: "Inference agent invoked",
+        detail: `Agent request ID: ${agentRequestId}`,
+        txHash: meta.txHash,
+      });
     },
-    onPaymentReleased: (tokenId) => {
-      onLogEvent(`PaymentReleased: NFT #${tokenId} minted`);
+    onPaymentReleased: (tokenId, meta) => {
+      onLogEvent({
+        id: ++eventId.current,
+        time: new Date().toLocaleTimeString(),
+        icon: "💰",
+        label: "Payment released to freelancer",
+        detail: `NFT #${tokenId} minted`,
+        txHash: meta.txHash,
+      });
       refreshJob();
     },
-    onPaymentDisputed: (score) => {
-      onLogEvent(`PaymentDisputed: score=${score}`);
+    onPaymentDisputed: (score, meta) => {
+      onLogEvent({
+        id: ++eventId.current,
+        time: new Date().toLocaleTimeString(),
+        icon: "⚠️",
+        label: "Payment disputed",
+        detail: `Score: ${score} — client can override`,
+        txHash: meta.txHash,
+      });
       refreshJob();
     },
-    onPaymentRefunded: () => {
-      onLogEvent("PaymentRefunded");
+    onPaymentRefunded: (meta) => {
+      onLogEvent({
+        id: ++eventId.current,
+        time: new Date().toLocaleTimeString(),
+        icon: "↩️",
+        label: "Payment refunded to client",
+        txHash: meta.txHash,
+      });
       refreshJob();
     }
   });
@@ -116,11 +194,11 @@ function JobStatusCard({ jobId, job, events, onLogEvent }: { jobId: bigint; job:
       </div>
       <div style={{ fontSize: 13, color: "#94a3b8", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px" }}>
         <span>Freelancer:</span><span style={{ color: "#cbd5e1", fontFamily: "monospace" }}>{display.freelancerAddress}</span>
-        <span>Amount:</span><span style={{ color: "#cbd5e1" }}>{(BigInt(display.amountWei) / BigInt("10000000000000000")).toString()} STT</span>
+        <span>Amount:</span><span style={{ color: "#cbd5e1" }}>{formatEther(BigInt(display.amountWei))} STT</span>
         <span>Requirements:</span><span style={{ color: "#cbd5e1" }}>{display.requirements}</span>
         <span>Deliverable:</span><span style={{ color: "#cbd5e1", fontFamily: "monospace", fontSize: 12 }}>{display.deliverableUrl}</span>
       </div>
-      <EventLog events={events} />
+      <EventLog events={structuredEvents} txHash={jobTxHash} />
     </div>
   );
 }
@@ -128,6 +206,9 @@ function JobStatusCard({ jobId, job, events, onLogEvent }: { jobId: bigint; job:
 function CreateJobForm() {
   const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const [freelancer, setFreelancer] = useState("");
   const [requirements, setRequirements] = useState("");
@@ -140,21 +221,27 @@ function CreateJobForm() {
   const [amount, setAmount] = useState("0.5");
   const [createdJob, setCreatedJob] = useState<JobInfo | null>(null);
   const [apiError, setApiError] = useState("");
-  const [events, setEvents] = useState<string[]>([]);
+  const [structuredEvents, setStructuredEvents] = useState<StructuredEvent[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayTxHash, setDisplayTxHash] = useState<string | null>(null);
   const submittingRef = useRef(false);
+  let eventId = useRef(0);
 
-  const logEvent = useCallback((msg: string) => {
-    setEvents(prev => [...prev, msg]);
+  const logEvent = useCallback((e: StructuredEvent) => {
+    setStructuredEvents(prev => [...prev, e]);
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.ethereum) return;
+    if (!window.ethereum) return;
     if (window.ethereum.setMaxListeners) {
       window.ethereum.setMaxListeners(20);
     }
-    const handleAccountsChanged = () => {};
-    const handleChainChanged = () => {};
+    const handleAccountsChanged = (accounts: unknown[]) => {
+      if ((accounts as string[]).length === 0) setCreatedJob(null);
+    };
+    const handleChainChanged = () => {
+      setCreatedJob(null);
+    };
     window.ethereum.on("accountsChanged", handleAccountsChanged);
     window.ethereum.on("chainChanged", handleChainChanged);
     return () => {
@@ -167,6 +254,7 @@ function CreateJobForm() {
     if (!isSuccess || !txHash) return;
 
     setApiError("");
+    setDisplayTxHash(txHash);
 
     fetch(`${API_URL}/api/jobs`, {
       method: "POST",
@@ -186,20 +274,30 @@ function CreateJobForm() {
       })
       .then((job: JobInfo) => {
         setCreatedJob(job);
-        logEvent(`Job #${job.jobId} created on-chain and persisted in API`);
+        logEvent({
+          id: ++eventId.current,
+          time: new Date().toLocaleTimeString(),
+          icon: "📝",
+          label: `Job #${job.jobId} created on-chain and persisted in API`,
+          txHash,
+        });
       })
       .catch((err) => {
         setApiError(err.message);
+        setDisplayTxHash(null);
       });
   }, [isSuccess, txHash, deliverableUrl, requirements, logEvent]);
 
-  const txState = isPending ? "pending" :
+  const hasError = !!writeError || !!apiError;
+  const txState = hasError && !isPending && !isConfirming ? "error" :
+    isPending ? "pending" :
     isConfirming ? "confirming" :
     isSuccess ? "success" :
     isSubmitting ? "pending" :
     "idle" as const;
 
-  const buttonLabel = txState === "pending" ? "Confirm in wallet..." :
+  const buttonLabel = txState === "error" ? "Try Again" :
+    txState === "pending" ? "Confirm in wallet..." :
     txState === "confirming" ? "Submitting to chain..." :
     txState === "success" ? "Job Created!" :
     "Create Job";
@@ -210,7 +308,8 @@ function CreateJobForm() {
     setIsSubmitting(true);
     setCreatedJob(null);
     setApiError("");
-    setEvents([]);
+    setDisplayTxHash(null);
+    setStructuredEvents([]);
     try {
       const deadlineTs = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
       writeContract({
@@ -234,6 +333,10 @@ function CreateJobForm() {
     }
   }, [isPending, isConfirming, isSuccess]);
 
+  if (!mounted) {
+    return <div style={{ height: 320 }} />;
+  }
+
   return (
     <div>
       <div style={{ border: "1px solid #334155", padding: 20, margin: "16px 0", borderRadius: 8, background: "#1e293b" }}>
@@ -251,11 +354,19 @@ function CreateJobForm() {
             <input placeholder="Amount (STT)" value={amount} onChange={e => setAmount(e.target.value)}
               style={{ width: 120, padding: 10, borderRadius: 6, border: "1px solid #475569", background: "#0f172a", color: "#e2e8f0" }} />
           </div>
-          <button onClick={handleCreate} disabled={txState !== "idle"}
-            style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: txState !== "idle" ? "wait" : "pointer", fontWeight: 600, background: txState === "success" ? "#22c55e" : "#3b82f6", color: "#fff", opacity: txState !== "idle" ? 0.7 : 1 }}>
+          <button onClick={handleCreate} disabled={txState === "pending" || txState === "confirming" || txState === "success"}
+            style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: txState === "pending" || txState === "confirming" ? "wait" : "pointer", fontWeight: 600, background: txState === "success" ? "#22c55e" : txState === "error" ? "#ef4444" : "#3b82f6", color: "#fff", opacity: txState === "pending" || txState === "confirming" ? 0.7 : 1 }}>
             {buttonLabel}
           </button>
         </div>
+        {displayTxHash && (
+          <p style={{ color: "#94a3b8", fontSize: 12, margin: "8px 0 0", fontFamily: "monospace" }}>
+            Tx:{" "}
+            <a href={`https://shannon.explorer.somnia.network/tx/${displayTxHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8" }}>
+              {displayTxHash.slice(0, 10)}...{displayTxHash.slice(-6)}
+            </a>
+          </p>
+        )}
         {writeError && <p style={{ color: "#ef4444", fontSize: 13, margin: "8px 0 0" }}>{writeError.message}</p>}
         {apiError && <p style={{ color: "#f59e0b", fontSize: 13, margin: "8px 0 0" }}>API: {apiError}</p>}
       </div>
@@ -264,8 +375,9 @@ function CreateJobForm() {
         <JobStatusCard
           jobId={BigInt(createdJob.jobId)}
           job={createdJob}
-          events={events}
+          structuredEvents={structuredEvents}
           onLogEvent={logEvent}
+          jobTxHash={displayTxHash || undefined}
         />
       )}
     </div>
@@ -278,9 +390,13 @@ export default function Home() {
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 28, color: "#f8fafc" }}>PayFi PayStream</h1>
         <p style={{ color: "#64748b", margin: "4px 0 16px" }}>AI-gated freelance payment escrow on Somnia Agentic L1</p>
-        <ConnectWallet />
+        <Suspense fallback={<div style={{ height: 44 }} />}>
+          <ConnectWallet />
+        </Suspense>
       </div>
-      <CreateJobForm />
+      <Suspense fallback={<div style={{ height: 320 }} />}>
+        <CreateJobForm />
+      </Suspense>
     </main>
   );
 }

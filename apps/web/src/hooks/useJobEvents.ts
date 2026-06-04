@@ -3,13 +3,30 @@ import { useWatchContractEvent } from "wagmi";
 import escrowAbi from "@payfi/types/abis/FlowFiEscrow.json";
 import { ESCROW_ADDRESS } from "../lib/config";
 
+interface OnLogMeta {
+  txHash: string;
+  blockNumber: bigint;
+}
+
 interface UseJobEventsProps {
   jobId: bigint;
-  onPaymentReleased?: (tokenId: bigint) => void;
-  onEvaluationComplete?: (score: bigint, reason: string) => void;
-  onEvaluationRequested?: (agentRequestId: bigint) => void;
-  onPaymentDisputed?: (score: bigint) => void;
-  onPaymentRefunded?: () => void;
+  onPaymentReleased?: (tokenId: bigint, meta: OnLogMeta) => void;
+  onEvaluationComplete?: (score: bigint, reason: string, meta: OnLogMeta) => void;
+  onEvaluationRequested?: (agentRequestId: bigint, meta: OnLogMeta) => void;
+  onPaymentDisputed?: (score: bigint, meta: OnLogMeta) => void;
+  onPaymentRefunded?: (meta: OnLogMeta) => void;
+}
+
+function pick<T>(logs: any[], jobId: bigint): { args: any; meta: OnLogMeta } | null {
+  const log = logs.find((l: any) => l.args?.jobId === jobId);
+  if (!log) return null;
+  return {
+    args: log.args,
+    meta: {
+      txHash: log.transactionHash as string,
+      blockNumber: log.blockNumber as bigint,
+    },
+  };
 }
 
 export function useJobEvents({
@@ -21,8 +38,8 @@ export function useJobEvents({
     abi: escrowAbi,
     eventName: "PaymentReleased",
     onLogs: (logs: any) => {
-      const log = logs.find((l: any) => l.args?.jobId === jobId);
-      if (log) onPaymentReleased?.(log.args.nftTokenId);
+      const found = pick(logs, jobId);
+      if (found) onPaymentReleased?.(found.args.nftTokenId, found.meta);
     }
   });
 
@@ -31,8 +48,8 @@ export function useJobEvents({
     abi: escrowAbi,
     eventName: "EvaluationComplete",
     onLogs: (logs: any) => {
-      const log = logs.find((l: any) => l.args?.jobId === jobId);
-      if (log) onEvaluationComplete?.(log.args.score, log.args.reason);
+      const found = pick(logs, jobId);
+      if (found) onEvaluationComplete?.(found.args.score, found.args.reason, found.meta);
     }
   });
 
@@ -41,8 +58,8 @@ export function useJobEvents({
     abi: escrowAbi,
     eventName: "EvaluationRequested",
     onLogs: (logs: any) => {
-      const log = logs.find((l: any) => l.args?.jobId === jobId);
-      if (log) onEvaluationRequested?.(log.args.agentRequestId);
+      const found = pick(logs, jobId);
+      if (found) onEvaluationRequested?.(found.args.agentRequestId, found.meta);
     }
   });
 
@@ -51,8 +68,8 @@ export function useJobEvents({
     abi: escrowAbi,
     eventName: "PaymentDisputed",
     onLogs: (logs: any) => {
-      const log = logs.find((l: any) => l.args?.jobId === jobId);
-      if (log) onPaymentDisputed?.(log.args.score);
+      const found = pick(logs, jobId);
+      if (found) onPaymentDisputed?.(found.args.score, found.meta);
     }
   });
 
@@ -61,8 +78,8 @@ export function useJobEvents({
     abi: escrowAbi,
     eventName: "PaymentRefunded",
     onLogs: (logs: any) => {
-      const log = logs.find((l: any) => l.args?.jobId === jobId);
-      if (log) onPaymentRefunded?.();
+      const found = pick(logs, jobId);
+      if (found) onPaymentRefunded?.(found.meta);
     }
   });
 }
