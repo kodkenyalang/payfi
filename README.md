@@ -66,9 +66,11 @@ graph TB
     UI -->|POST /api/jobs| JR
     JR -->|read tx receipt| SC
     JR --> PM --> PG
+    JR -->|enqueue reachability check| RD
     EL -->|poll eth_getLogs| SC
     EL --> PM
-    EW --> RD
+    EW -->|consume queue| RD
+    EW --> PM
     SC -->|createRequest| PLAT
     PLAT --> AG
     AG -->|handleResponse| SC
@@ -100,7 +102,7 @@ sequenceDiagram
 
     F->>SC: submitWork(deliverableUrl)
 
-    Note over FE: useJobEvents detects submitWork
+    Note over FE: JobStatusCard polls API every 5s for updates
 
     Any->>SC: invokeEvaluation(jobId)
     SC->>PL: createRequest(agentId, abi.encodeWithSelector(inferString, prompt))
@@ -112,17 +114,17 @@ sequenceDiagram
     PL-->>SC: handleResponse(score, reason)
 
     alt score >= 80
-        SC->>F: PaymentReleased (full amount)
         SC->>NFT: Mint receipt NFT
-        API->>PG: EvaluationComplete + status=COMPLETE
+        SC-->>FE: EvaluationComplete + PaymentReleased
+        API->>PG: Evaluation recorded, status → COMPLETE
         FE-->>C: ✅ Payment released! NFT #1
     else score 50-79
-        SC->>C: PaymentDisputed — client can override
-        API->>PG: status=DISPUTED
-        FE-->>C: ⚠️ Score disputed
+        SC-->>FE: EvaluationComplete + PaymentDisputed
+        API->>PG: Evaluation recorded, status → DISPUTED
+        FE-->>C: ⚠️ Score disputed — client can override
     else score < 50
-        SC->>C: PaymentRefunded
-        API->>PG: status=REFUNDED
+        SC-->>FE: EvaluationComplete + PaymentRefunded
+        API->>PG: Evaluation recorded, status → REFUNDED
         FE-->>C: ❌ Work rejected, funds returned
     end
 ```

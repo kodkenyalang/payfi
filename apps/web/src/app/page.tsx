@@ -4,8 +4,9 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { injected } from "wagmi/connectors";
 import escrowAbi from "@payfi/types/abis/FlowFiEscrow.json";
 import { ESCROW_ADDRESS, API_URL } from "../lib/config";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useJobEvents } from "../hooks/useJobEvents";
+import { bigIntReplacer } from "../utils/bigint-serializer";
 
 type JobStatus = "FUNDED" | "SUBMITTED" | "EVALUATING" | "COMPLETE" | "DISPUTED" | "REFUNDED";
 
@@ -73,6 +74,9 @@ function JobStatusCard({ jobId, job, events, onLogEvent }: { jobId: bigint; job:
       onLogEvent(`EvaluationComplete: score=${score} "${reason.slice(0, 40)}..."`);
       refreshJob();
     },
+    onEvaluationRequested: (agentRequestId) => {
+      onLogEvent(`EvaluationRequested: agentRequestId=${agentRequestId}`);
+    },
     onPaymentReleased: (tokenId) => {
       onLogEvent(`PaymentReleased: NFT #${tokenId} minted`);
       refreshJob();
@@ -137,9 +141,26 @@ function CreateJobForm() {
   const [createdJob, setCreatedJob] = useState<JobInfo | null>(null);
   const [apiError, setApiError] = useState("");
   const [events, setEvents] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const logEvent = useCallback((msg: string) => {
     setEvents(prev => [...prev, msg]);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+    if (window.ethereum.setMaxListeners) {
+      window.ethereum.setMaxListeners(20);
+    }
+    const handleAccountsChanged = () => {};
+    const handleChainChanged = () => {};
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -154,7 +175,7 @@ function CreateJobForm() {
         transactionHash: txHash,
         deliverableUrl,
         requirements
-      })
+      }, bigIntReplacer)
     })
       .then(async (resp) => {
         if (!resp.ok) {
@@ -172,24 +193,46 @@ function CreateJobForm() {
       });
   }, [isSuccess, txHash, deliverableUrl, requirements, logEvent]);
 
-  const label = isPending ? "Confirm in wallet..." :
-    isConfirming ? "Submitting to chain..." :
-    isSuccess ? "Job Created!" :
+  const txState = isPending ? "pending" :
+    isConfirming ? "confirming" :
+    isSuccess ? "success" :
+    isSubmitting ? "pending" :
+    "idle" as const;
+
+  const buttonLabel = txState === "pending" ? "Confirm in wallet..." :
+    txState === "confirming" ? "Submitting to chain..." :
+    txState === "success" ? "Job Created!" :
     "Create Job";
 
   const handleCreate = () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
     setCreatedJob(null);
     setApiError("");
     setEvents([]);
-    const deadlineTs = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
-    writeContract({
-      address: ESCROW_ADDRESS,
-      abi: escrowAbi,
-      functionName: "createJob",
-      args: [freelancer as `0x${string}`, requirements, deliverableUrl, deadlineTs],
-      value: BigInt(Math.floor(parseFloat(amount) * 1e18))
-    });
+    try {
+      const deadlineTs = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
+      writeContract({
+        address: ESCROW_ADDRESS,
+        abi: escrowAbi,
+        functionName: "createJob",
+        args: [freelancer as `0x${string}`, requirements, deliverableUrl, deadlineTs],
+        value: BigInt(Math.floor(parseFloat(amount) * 1e18))
+      });
+    } catch (err) {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+      setApiError(err instanceof Error ? err.message : "Failed to create job");
+    }
   };
+
+  useEffect(() => {
+    if (!isPending && !isConfirming && !isSuccess) {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [isPending, isConfirming, isSuccess]);
 
   return (
     <div>
@@ -208,9 +251,9 @@ function CreateJobForm() {
             <input placeholder="Amount (STT)" value={amount} onChange={e => setAmount(e.target.value)}
               style={{ width: 120, padding: 10, borderRadius: 6, border: "1px solid #475569", background: "#0f172a", color: "#e2e8f0" }} />
           </div>
-          <button onClick={handleCreate} disabled={isPending || isConfirming || isSuccess}
-            style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: isPending || isConfirming ? "wait" : "pointer", fontWeight: 600, background: isSuccess ? "#22c55e" : "#3b82f6", color: "#fff", opacity: isPending || isConfirming ? 0.7 : 1 }}>
-            {label}
+          <button onClick={handleCreate} disabled={txState !== "idle"}
+            style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: txState !== "idle" ? "wait" : "pointer", fontWeight: 600, background: txState === "success" ? "#22c55e" : "#3b82f6", color: "#fff", opacity: txState !== "idle" ? 0.7 : 1 }}>
+            {buttonLabel}
           </button>
         </div>
         {writeError && <p style={{ color: "#ef4444", fontSize: 13, margin: "8px 0 0" }}>{writeError.message}</p>}

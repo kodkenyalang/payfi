@@ -7,12 +7,13 @@ interface UseJobEventsProps {
   jobId: bigint;
   onPaymentReleased?: (tokenId: bigint) => void;
   onEvaluationComplete?: (score: bigint, reason: string) => void;
+  onEvaluationRequested?: (agentRequestId: bigint) => void;
   onPaymentDisputed?: (score: bigint) => void;
   onPaymentRefunded?: () => void;
 }
 
 export function useJobEvents({
-  jobId, onPaymentReleased, onEvaluationComplete, onPaymentDisputed, onPaymentRefunded
+  jobId, onPaymentReleased, onEvaluationComplete, onEvaluationRequested, onPaymentDisputed, onPaymentRefunded
 }: UseJobEventsProps) {
 
   useWatchContractEvent({
@@ -32,6 +33,16 @@ export function useJobEvents({
     onLogs: (logs: any) => {
       const log = logs.find((l: any) => l.args?.jobId === jobId);
       if (log) onEvaluationComplete?.(log.args.score, log.args.reason);
+    }
+  });
+
+  useWatchContractEvent({
+    address: ESCROW_ADDRESS,
+    abi: escrowAbi,
+    eventName: "EvaluationRequested",
+    onLogs: (logs: any) => {
+      const log = logs.find((l: any) => l.args?.jobId === jobId);
+      if (log) onEvaluationRequested?.(log.args.agentRequestId);
     }
   });
 

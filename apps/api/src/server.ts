@@ -4,6 +4,9 @@ dotenv.config();
 import { validateEnv } from "./env";
 validateEnv();
 
+const bigIntReplacer = (_key: string, value: unknown) =>
+  typeof value === "bigint" ? value.toString() : value;
+
 import express from "express";
 import cors from "cors";
 import "express-async-errors";
@@ -17,6 +20,7 @@ const DEADLINE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.set("json replacer", bigIntReplacer);
 app.use(cors());
 app.use(express.json());
 
