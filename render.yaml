@@ -34,10 +34,7 @@ services:
     startCommand: cd apps/web && npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: payfi-api
-          type: web
-          property: host
+        value: https://payfi-api.onrender.com
       - key: NEXT_PUBLIC_SOMNIA_RPC_URL
         value: https://dream-rpc.somnia.network
       - key: NEXT_PUBLIC_ESCROW_ADDRESS
